@@ -10,24 +10,28 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('app').appendChild(renderer.domElement);
 
-// Initial Camera Position
-camera.position.z = 5;
+// Set background color to Black Pearl
+scene.background = new THREE.Color(0x050a14);
 
-// Basic Lighting
+// Better Camera Position - closer to the ocean
+camera.position.set(0, 5, 10);
+camera.lookAt(0, 0, 0);
+
+// Better Lighting
 const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0x8A2BE2, 0.5); // Iridescent Violet light
-directionalLight.position.set(1, 1, 1);
+const directionalLight = new THREE.DirectionalLight(0x8A2BE2, 1); // Brighter violet light
+directionalLight.position.set(5, 10, 5);
 scene.add(directionalLight);
 
-// Create the base Ocean Plane with vertex manipulation
-const planeGeometry = new THREE.PlaneGeometry(20, 20, 50, 50);
+// Create a LARGER Ocean Plane
+const planeGeometry = new THREE.PlaneGeometry(50, 50, 100, 100); // Much larger with more detail
 const planeMaterial = new THREE.MeshStandardMaterial({ 
     color: new THREE.Color(0x0a5c8a),
-    metalness: 0.8,
+    metalness: 0.9,
     roughness: 0.1,
-    wireframe: true // Temporary: helps us see the waves clearly
+    wireframe: true
 });
 
 const oceanPlane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -38,24 +42,24 @@ scene.add(oceanPlane);
 const positions = planeGeometry.attributes.position.array;
 const originalY = [];
 for (let i = 0; i < positions.length; i += 3) {
-    originalY.push(positions[i + 1]); // Store original y positions
+    originalY.push(positions[i + 1]);
+}
+
 function animate() {
     requestAnimationFrame(animate);
     
-    // Basic breathing wave animation
-    const time = Date.now() * 0.001; // Convert to seconds
+    const time = Date.now() * 0.001;
     const positions = planeGeometry.attributes.position.array;
     
     for (let i = 0; i < positions.length; i += 3) {
         const x = positions[i];
         const z = positions[i + 2];
         
-        // Simple wave formula from our technical spec
-        const wave1 = Math.sin(x * 0.5 + time) * 0.1;
-        const wave2 = Math.sin(z * 0.2 + time * 1.3) * 0.05;
+        const wave1 = Math.sin(x * 0.3 + time) * 0.3; // Stronger waves
+        const wave2 = Math.sin(z * 0.2 + time * 1.5) * 0.2;
+        const wave3 = Math.sin(x * 0.1 + z * 0.1 + time * 0.5) * 0.1;
         
-        // Apply wave to Y position
-        positions[i + 1] = originalY[i / 3] + wave1 + wave2;
+        positions[i + 1] = originalY[i / 3] + wave1 + wave2 + wave3;
     }
     
     planeGeometry.attributes.position.needsUpdate = true;
