@@ -21,23 +21,21 @@ const directionalLight = new THREE.DirectionalLight(0x8A2BE2, 0.5); // Iridescen
 directionalLight.position.set(1, 1, 1);
 scene.add(directionalLight);
 
-// TEST: Add a basic object to ensure the scene is working.
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshStandardMaterial({ 
-    color: new THREE.Color(0x00CED1), // Soft Cyan Glow
-    metalness: 0.7,
-    roughness: 0.2
+// Create the base Ocean Plane
+const planeGeometry = new THREE.PlaneGeometry(20, 20, 50, 50); // Large plane with many segments for waves
+const planeMaterial = new THREE.MeshStandardMaterial({ 
+    color: new THREE.Color(0x0a5c8a), // Deep Ocean color from our palette
+    metalness: 0.8,
+    roughness: 0.1
 });
-const testCube = new THREE.Mesh(geometry, material);
-scene.add(testCube);
+const oceanPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+oceanPlane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+scene.add(oceanPlane);
 
 // Animation Loop
 function animate() {
     requestAnimationFrame(animate);
     
-    // Basic rotation for our test cube
-    testCube.rotation.x += 0.01;
-    testCube.rotation.y += 0.01;
     
     renderer.render(scene, camera);
 }
