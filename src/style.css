@@ -1,0 +1,19 @@
+/* Global resets and styles for the SIREN prototype */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#app {
+  position: fixed;
+  top: 0;
+  left: 0;
+  outline: none;
+}
