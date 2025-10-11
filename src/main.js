@@ -14,24 +14,29 @@ document.getElementById('app').appendChild(renderer.domElement);
 scene.background = new THREE.Color(0x050a14);
 
 // Better Camera Position - closer to the ocean
-camera.position.set(0, 5, 10);
+camera.position.set(0, 3, 8);
 camera.lookAt(0, 0, 0);
 
 // Better Lighting
-const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
+const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0x8A2BE2, 1); // Brighter violet light
+const directionalLight = new THREE.DirectionalLight(0x8A2BE2, 1);
 directionalLight.position.set(5, 10, 5);
 scene.add(directionalLight);
 
-// Create a LARGER Ocean Plane
-const planeGeometry = new THREE.PlaneGeometry(50, 50, 100, 100); // Much larger with more detail
+// Add a point light for sparkle effect
+const pointLight = new THREE.PointLight(0x00CED1, 1, 100);
+pointLight.position.set(0, 5, 5);
+scene.add(pointLight);
+
+// Create the Ocean Plane - SOLID SURFACE
+const planeGeometry = new THREE.PlaneGeometry(50, 50, 100, 100);
 const planeMaterial = new THREE.MeshStandardMaterial({ 
-    color: new THREE.Color(0x0a5c8a),
+    color: new THREE.Color(0x0a5c8a), // Deep Ocean Blue
     metalness: 0.9,
     roughness: 0.1,
-    wireframe: true
+    wireframe: false // SOLID SURFACE
 });
 
 const oceanPlane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -55,7 +60,7 @@ function animate() {
         const x = positions[i];
         const z = positions[i + 2];
         
-        const wave1 = Math.sin(x * 0.3 + time) * 0.3; // Stronger waves
+        const wave1 = Math.sin(x * 0.3 + time) * 0.3;
         const wave2 = Math.sin(z * 0.2 + time * 1.5) * 0.2;
         const wave3 = Math.sin(x * 0.1 + z * 0.1 + time * 0.5) * 0.1;
         
@@ -63,6 +68,11 @@ function animate() {
     }
     
     planeGeometry.attributes.position.needsUpdate = true;
+    
+    // Make the point light move gently
+    pointLight.position.x = Math.sin(time * 0.5) * 3;
+    pointLight.position.z = Math.cos(time * 0.3) * 3;
+    
     renderer.render(scene, camera);
 }
 animate();
