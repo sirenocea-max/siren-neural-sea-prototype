@@ -13,9 +13,8 @@ document.getElementById('app').appendChild(renderer.domElement);
 // Set background color to Black Pearl
 scene.background = new THREE.Color(0x050a14);
 
-// Better Camera Position
-camera.position.set(0, 3, 8);
-camera.lookAt(0, 0, 0);
+// Camera starting position - floating above ocean
+camera.position.set(0, 2, 8);
 
 // Lighting
 const ambientLight = new THREE.AmbientLight(0x404040);
@@ -118,13 +117,50 @@ function getColorHex(emotion) {
   return hexMap[emotion] || '#1E7FCB';
 }
 
+// === TIDAL DRIFT CAMERA SYSTEM ===
+let targetRotation = { x: 0, y: 0 };
+let currentRotation = { x: 0, y: 0 };
+let mouseX = 0;
+let mouseY = 0;
+
+// Mouse movement handler
+document.addEventListener('mousemove', (event) => {
+  // Convert mouse position to normalized coordinates (-1 to 1)
+  mouseX = (event.clientX / window.innerWidth - 0.5) * 2;
+  mouseY = (event.clientY / window.innerHeight - 0.5) * 2;
+  
+  // Set target rotation with limits (±30° horizontal, ±15° vertical)
+  targetRotation.x = mouseX * 0.5; // 0.5 radians ≈ 30 degrees
+  targetRotation.y = mouseY * 0.25; // 0.25 radians ≈ 15 degrees
+});
+
 // Animation loop
 let pulseTime = 0;
+let clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
   
-  const time = Date.now() * 0.001;
+  const time = clock.getElapsedTime();
+  const delta = clock.getDelta();
+  
+  // === CAMERA DRIFT MOTION ===
+  // Gentle sine-based drift (breathing effect)
+  const driftX = Math.sin(time * 0.2) * 0.02;
+  const driftY = Math.cos(time * 0.15) * 0.02;
+  
+  // Smooth follow (lerp) - SIREN's "curiosity lag"
+  currentRotation.x += (targetRotation.x - currentRotation.x) * 0.05;
+  currentRotation.y += (targetRotation.y - currentRotation.y) * 0.05;
+  
+  // Apply rotation with drift
+  camera.rotation.x = currentRotation.y + driftY;
+  camera.rotation.y = currentRotation.x + driftX;
+  
+  // Gentle vertical float (breathing motion)
+  camera.position.y = Math.sin(time * 0.5) * 0.1 + 2;
+  
+  // === OCEAN WAVES ===
   const positions = planeGeometry.attributes.position.array;
   
   // Emotional wave behavior
@@ -165,7 +201,7 @@ function animate() {
   planeGeometry.attributes.position.needsUpdate = true;
   
   // Micro pulse effect (heartbeat every 5 seconds)
-  pulseTime += 0.016; // Roughly 60fps
+  pulseTime += delta;
   if (pulseTime >= 5) {
     // Add a subtle glow effect
     directionalLight.intensity = 1.5;
