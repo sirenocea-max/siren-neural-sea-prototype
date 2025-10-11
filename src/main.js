@@ -33,6 +33,58 @@ const emotionColors = {
   connection: new THREE.Color(0x6EE7E0)   // Soft Cyan Glow
 };
 
+// Emotional Sound System
+const emotionSounds = {
+  calm: { freq: 110, type: 'sine', volume: 0.1 },      // Deep hum (A2)
+  wonder: { freq: 440, type: 'sine', volume: 0.2 },    // A4 - curiosity tone
+  comfort: { freq: 330, type: 'triangle', volume: 0.15 }, // E4 - warm tone
+  anxiety: { freq: 880, type: 'sawtooth', volume: 0.3 },  // A5 - sharp tone
+  connection: { freq: 554, type: 'sine', volume: 0.2 } // C#5 - connection tone
+};
+
+// Audio Context and Setup
+let audioContext = null;
+let oscillator = null;
+let gainNode = null;
+
+function initAudio() {
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    gainNode = audioContext.createGain();
+    gainNode.connect(audioContext.destination);
+    gainNode.gain.value = 0.1; // Start with calm volume
+    
+    // Start with calm sound
+    playEmotionSound('calm');
+    
+    console.log('Audio system initialized');
+  } catch (error) {
+    console.log('Audio not supported:', error);
+  }
+}
+
+function playEmotionSound(emotion) {
+  if (!audioContext || !emotionSounds[emotion]) return;
+  
+  // Stop previous sound
+  if (oscillator) {
+    oscillator.stop();
+  }
+  
+  // Create new oscillator for this emotion
+  oscillator = audioContext.createOscillator();
+  oscillator.connect(gainNode);
+  
+  const soundConfig = emotionSounds[emotion];
+  oscillator.type = soundConfig.type;
+  oscillator.frequency.setValueAtTime(soundConfig.freq, audioContext.currentTime);
+  
+  // Smooth volume transition
+  gainNode.gain.linearRampToValueAtTime(soundConfig.volume, audioContext.currentTime + 1);
+  
+  oscillator.start();
+}
+
 // Create the Ocean Plane
 const planeGeometry = new THREE.PlaneGeometry(50, 50, 100, 100);
 const planeMaterial = new THREE.MeshStandardMaterial({ 
@@ -62,6 +114,9 @@ function setEmotion(emotion) {
   if (emotionColors[emotion]) {
     currentEmotion = emotion;
     planeMaterial.color = emotionColors[emotion];
+    
+    // Play emotion sound
+    playEmotionSound(emotion);
     
     // Reset timer - return to calm after 15 seconds
     if (emotionTimer) clearTimeout(emotionTimer);
@@ -101,6 +156,22 @@ function createEmotionButtons() {
     button.onclick = () => setEmotion(emotion.key);
     container.appendChild(button);
   });
+  
+  // Add audio start button (required for browser autoplay)
+  const audioButton = document.createElement('button');
+  audioButton.textContent = '🔊 Start Audio';
+  audioButton.style.margin = '5px';
+  audioButton.style.padding = '8px 12px';
+  audioButton.style.backgroundColor = '#333';
+  audioButton.style.color = 'white';
+  audioButton.style.border = 'none';
+  audioButton.style.borderRadius = '4px';
+  audioButton.style.cursor = 'pointer';
+  audioButton.onclick = () => {
+    initAudio();
+    audioButton.style.display = 'none';
+  };
+  container.appendChild(audioButton);
   
   document.body.appendChild(container);
 }
