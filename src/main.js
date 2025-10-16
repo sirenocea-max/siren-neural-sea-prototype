@@ -105,6 +105,63 @@ for (let i = 0; i < positions.length; i += 3) {
   originalY.push(positions[i + 1]);
 }
 
+// === PARTICLE SYSTEM ===
+let particles = null;
+let particlePositions = null;
+let particleVelocities = null;
+let particleColors = null;
+
+function createParticles() {
+  const particleCount = 200;
+  
+  // Create particle geometry
+  const particleGeometry = new THREE.BufferGeometry();
+  particlePositions = new Float32Array(particleCount * 3);
+  particleColors = new Float32Array(particleCount * 3);
+  particleVelocities = [];
+  
+  // Create particles in random positions above the ocean
+  for (let i = 0; i < particleCount; i++) {
+    const i3 = i * 3;
+    
+    // Random position above ocean
+    particlePositions[i3] = (Math.random() - 0.5) * 40;     // x
+    particlePositions[i3 + 1] = Math.random() * 5 + 1;      // y (height)
+    particlePositions[i3 + 2] = (Math.random() - 0.5) * 40; // z
+    
+    // Random color from emotional palette
+    const colorKeys = Object.keys(emotionColors);
+    const randomColorKey = colorKeys[Math.floor(Math.random() * colorKeys.length)];
+    const color = emotionColors[randomColorKey];
+    
+    particleColors[i3] = color.r;
+    particleColors[i3 + 1] = color.g;
+    particleColors[i3 + 2] = color.b;
+    
+    // Random velocity
+    particleVelocities.push({
+      x: (Math.random() - 0.5) * 0.02,
+      y: (Math.random() - 0.5) * 0.01,
+      z: (Math.random() - 0.5) * 0.02
+    });
+  }
+  
+  particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+  particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+  
+  // Create particle material
+  const particleMaterial = new THREE.PointsMaterial({
+    size: 0.5,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending
+  });
+  
+  particles = new THREE.Points(particleGeometry, particleMaterial);
+  scene.add(particles);
+}
+
 // Emotion state
 let currentEmotion = 'calm';
 let emotionTimer = null;
@@ -231,8 +288,33 @@ function animate() {
   // Gentle vertical float (breathing motion)
   camera.position.y = Math.sin(time * 0.5) * 0.1 + 2;
   
+  // === PARTICLE ANIMATION ===
+  if (particles) {
+    const positions = particles.geometry.attributes.position.array;
+    
+    for (let i = 0; i < positions.length / 3; i++) {
+      const i3 = i * 3;
+      const velocity = particleVelocities[i];
+      
+      // Update position
+      positions[i3] += velocity.x;
+      positions[i3 + 1] += velocity.y;
+      positions[i3 + 2] += velocity.z;
+      
+      // Bounce off boundaries
+      if (positions[i3] < -20 || positions[i3] > 20) velocity.x *= -1;
+      if (positions[i3 + 1] < 0.5 || positions[i3 + 1] > 8) velocity.y *= -1;
+      if (positions[i3 + 2] < -20 || positions[i3 + 2] > 20) velocity.z *= -1;
+      
+      // Gentle floating motion
+      positions[i3 + 1] += Math.sin(time + i) * 0.002;
+    }
+    
+    particles.geometry.attributes.position.needsUpdate = true;
+  }
+  
   // === OCEAN WAVES ===
-  const positions = planeGeometry.attributes.position.array;
+  const oceanPositions = planeGeometry.attributes.position.array;
   
   // Emotional wave behavior
   let waveIntensity = 0.3; // Default for calm
@@ -258,15 +340,15 @@ function animate() {
   }
   
   // Apply waves based on emotion
-  for (let i = 0; i < positions.length; i += 3) {
-    const x = positions[i];
-    const z = positions[i + 2];
+  for (let i = 0; i < oceanPositions.length; i += 3) {
+    const x = oceanPositions[i];
+    const z = oceanPositions[i + 2];
     
     const wave1 = Math.sin(x * 0.3 + time * waveSpeed) * waveIntensity;
     const wave2 = Math.sin(z * 0.2 + time * 1.5 * waveSpeed) * (waveIntensity * 0.7);
     const wave3 = Math.sin(x * 0.1 + z * 0.1 + time * 0.5 * waveSpeed) * (waveIntensity * 0.3);
     
-    positions[i + 1] = originalY[i / 3] + wave1 + wave2 + wave3;
+    oceanPositions[i + 1] = originalY[i / 3] + wave1 + wave2 + wave3;
   }
   
   planeGeometry.attributes.position.needsUpdate = true;
@@ -286,55 +368,7 @@ function animate() {
 }
 
 // Initialize
-// === PARTICLE SYSTEM ===
-function createParticles() {
-  const particleCount = 100;
-  const particles = new THREE.BufferGeometry();
-  const positions = new Float32Array(particleCount * 3);
-  const colors = new Float32Array(particleCount * 3);
-
-  for (let i = 0; i < particleCount; i++) {
-    const i3 = i * 3;
-    positions[i3] = (Math.random() - 0.5) * 40;
-    positions[i3 + 1] = Math.random() * 5 + 1;
-    positions[i3 + 2] = (Math.random() - 0.5) * 40;
-    
-    colors[i3] = Math.random();
-    colors[i3 + 1] = Math.random();
-    colors[i3 + 2] = Math.random();
-  }
-
-  particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-  const particleMaterial = new THREE.PointsMaterial({
-    size: 0.3,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.6
-  });
-
-  const particleSystem = new THREE.Points(particles, particleMaterial);
-  scene.add(particleSystem);
-  return particleSystem;
-}
-
-// Initialize
-const particles = createParticles();
-createEmotionButtons();
-animate();
-
-// Handle window resizing
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// Test: Auto-trigger wonder after 3 seconds
-setTimeout(() => {
-  setEmotion('wonder');
-}, 3000);
+createParticles(); // Create the magical particles
 createEmotionButtons();
 animate();
 
