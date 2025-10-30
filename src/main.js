@@ -162,6 +162,143 @@ function createParticles() {
   scene.add(particles);
 }
 
+// === PARTICLE DRAGGING SYSTEM ===
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let draggedParticle = null;
+let originalParticleVelocity = null;
+
+function setupParticleDragging() {
+  // Mouse event listeners for particle dragging
+  renderer.domElement.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+  
+  // Touch event listeners for mobile
+  renderer.domElement.addEventListener('touchstart', onTouchStart);
+  window.addEventListener('touchmove', onTouchMove);
+  window.addEventListener('touchend', onTouchEnd);
+}
+
+function onMouseDown(event) {
+  event.preventDefault();
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  
+  tryPickParticle();
+}
+
+function onTouchStart(event) {
+  event.preventDefault();
+  if (event.touches.length > 0) {
+    mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+    
+    tryPickParticle();
+  }
+}
+
+function onMouseMove(event) {
+  if (!draggedParticle) return;
+  
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  
+  updateDraggedParticlePosition();
+}
+
+function onTouchMove(event) {
+  if (!draggedParticle || event.touches.length === 0) return;
+  
+  event.preventDefault();
+  mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+  
+  updateDraggedParticlePosition();
+}
+
+function onMouseUp() {
+  releaseParticle();
+}
+
+function onTouchEnd() {
+  releaseParticle();
+}
+
+function tryPickParticle() {
+  raycaster.setFromCamera(mouse, camera);
+  
+  // Create a temporary sphere geometry for intersection testing
+  const particleSphere = new THREE.SphereGeometry(0.8, 8, 8);
+  const particlePositions = particles.geometry.attributes.position.array;
+  
+  for (let i = 0; i < particlePositions.length / 3; i++) {
+    const i3 = i * 3;
+    const particlePosition = new THREE.Vector3(
+      particlePositions[i3],
+      particlePositions[i3 + 1],
+      particlePositions[i3 + 2]
+    );
+    
+    particleSphere.translate(particlePosition.x, particlePosition.y, particlePosition.z);
+    
+    // Check if ray intersects with particle sphere
+    const intersection = raycaster.ray.intersectSphere(
+      new THREE.Sphere(particlePosition, 0.8)
+    );
+    
+    if (intersection) {
+      // Found a particle to drag!
+      draggedParticle = i;
+      originalParticleVelocity = { ...particleVelocities[i] };
+      
+      // Stop the particle's movement while dragging
+      particleVelocities[i].x = 0;
+      particleVelocities[i].y = 0;
+      particleVelocities[i].z = 0;
+      
+      // Change cursor to grabbing
+      renderer.domElement.style.cursor = 'grabbing';
+      break;
+    }
+  }
+}
+
+function updateDraggedParticlePosition() {
+  if (draggedParticle === null) return;
+  
+  // Create a plane at the particle's current height for dragging
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -particlePositions[draggedParticle * 3 + 1]);
+  const intersectionPoint = new THREE.Vector3();
+  
+  raycaster.setFromCamera(mouse, camera);
+  raycaster.ray.intersectPlane(plane, intersectionPoint);
+  
+  if (intersectionPoint) {
+    // Update particle position
+    particlePositions[draggedParticle * 3] = intersectionPoint.x;
+    particlePositions[draggedParticle * 3 + 1] = intersectionPoint.y;
+    particlePositions[draggedParticle * 3 + 2] = intersectionPoint.z;
+    
+    particles.geometry.attributes.position.needsUpdate = true;
+  }
+}
+
+function releaseParticle() {
+  if (draggedParticle !== null) {
+    // Give the particle a small random velocity when released
+    particleVelocities[draggedParticle].x = (Math.random() - 0.5) * 0.02;
+    particleVelocities[draggedParticle].y = (Math.random() - 0.5) * 0.01;
+    particleVelocities[draggedParticle].z = (Math.random() - 0.5) * 0.02;
+    
+    draggedParticle = null;
+    originalParticleVelocity = null;
+    
+    // Reset cursor
+    renderer.domElement.style.cursor = 'grab';
+  }
+}
+
 // Emotion state
 let currentEmotion = 'calm';
 let emotionTimer = null;
@@ -261,7 +398,7 @@ function createEmotionButtons() {
   
   // Add keyboard focus helper
   const focusHelper = document.createElement('div');
-  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then use WASD/Arrows for 360° camera movement</p>';
+  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then:<br>• WASD/Arrows: 360° camera<br>• Click & drag: Move particles</p>';
   focusHelper.style.cursor = 'pointer';
   focusHelper.onclick = () => {
     window.focus();
@@ -398,14 +535,14 @@ function animate() {
   camera.position.y = Math.sin(time * 0.5) * 0.1 + 2;
   
   // === PARTICLE ANIMATION ===
-  if (particles) {
+  if (particles && draggedParticle === null) {
     const positions = particles.geometry.attributes.position.array;
     
     for (let i = 0; i < positions.length / 3; i++) {
       const i3 = i * 3;
       const velocity = particleVelocities[i];
       
-      // Update position
+      // Update position (only if not being dragged)
       positions[i3] += velocity.x;
       positions[i3 + 1] += velocity.y;
       positions[i3 + 2] += velocity.z;
@@ -480,6 +617,7 @@ function animate() {
 createParticles();
 createEmotionButtons();
 setupKeyboardControls(); // Initialize keyboard controls
+setupParticleDragging(); // Initialize particle dragging system
 animate();
 
 // Handle window resizing
