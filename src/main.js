@@ -245,22 +245,49 @@ function getColorHex(emotion) {
   return hexMap[emotion] || '#1E7FCB';
 }
 
-// === TIDAL DRIFT CAMERA SYSTEM ===
+// === KEYBOARD CAMERA CONTROL SYSTEM ===
 let targetRotation = { x: 0, y: 0 };
 let currentRotation = { x: 0, y: 0 };
-let mouseX = 0;
-let mouseY = 0;
+let keys = {};
 
-// Mouse movement handler
-document.addEventListener('mousemove', (event) => {
-  // Convert mouse position to normalized coordinates (-1 to 1)
-  mouseX = (event.clientX / window.innerWidth - 0.5) * 2;
-  mouseY = (event.clientY / window.innerHeight - 0.5) * 2;
-  
-  // Set target rotation with limits (±30° horizontal, ±15° vertical)
-  targetRotation.x = mouseX * 0.5; // 0.5 radians ≈ 30 degrees
-  targetRotation.y = mouseY * 0.25; // 0.25 radians ≈ 15 degrees
+// Keyboard event handlers
+document.addEventListener('keydown', (event) => {
+  keys[event.key] = true;
 });
+
+document.addEventListener('keyup', (event) => {
+  keys[event.key] = false;
+});
+
+// Keyboard control function
+function handleKeyboardInput() {
+  const rotationSpeed = 0.05;
+  const maxRotation = 0.8; // Maximum rotation limit
+  
+  // Arrow keys and WASD for camera control
+  if (keys['ArrowUp'] || keys['w'] || keys['W']) {
+    targetRotation.x -= rotationSpeed;
+  }
+  if (keys['ArrowDown'] || keys['s'] || keys['S']) {
+    targetRotation.x += rotationSpeed;
+  }
+  if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+    targetRotation.y -= rotationSpeed;
+  }
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+    targetRotation.y += rotationSpeed;
+  }
+  
+  // Reset camera with Spacebar
+  if (keys[' ']) {
+    targetRotation.x = 0;
+    targetRotation.y = 0;
+  }
+  
+  // Apply rotation limits
+  targetRotation.x = Math.max(-maxRotation, Math.min(maxRotation, targetRotation.x));
+  targetRotation.y = Math.max(-maxRotation, Math.min(maxRotation, targetRotation.y));
+}
 
 // Animation loop
 let pulseTime = 0;
@@ -276,6 +303,9 @@ function animate() {
   // Gentle sine-based drift (breathing effect)
   const driftX = Math.sin(time * 0.2) * 0.02;
   const driftY = Math.cos(time * 0.15) * 0.02;
+  
+  // Handle keyboard input
+  handleKeyboardInput();
   
   // Smooth follow (lerp) - SIREN's "curiosity lag"
   currentRotation.x += (targetRotation.x - currentRotation.x) * 0.05;
