@@ -261,7 +261,7 @@ function createEmotionButtons() {
   
   // Add keyboard focus helper
   const focusHelper = document.createElement('div');
-  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then use WASD/Arrows to move camera</p>';
+  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then use WASD/Arrows for 360° camera movement</p>';
   focusHelper.style.cursor = 'pointer';
   focusHelper.onclick = () => {
     window.focus();
@@ -333,23 +333,24 @@ function setupKeyboardControls() {
   });
 }
 
-// Keyboard control function
+// Keyboard control function - FULL 360° FREEDOM!
 function handleKeyboardInput() {
   const rotationSpeed = 0.08;
-  const maxRotation = 1.0;
+  
+  // REMOVED ALL ROTATION LIMITS - FULL 360° FREEDOM!
   
   // Arrow keys and WASD for camera control (case insensitive)
   if (keys['arrowup'] || keys['w']) {
-    targetRotation.x = Math.max(targetRotation.x - rotationSpeed, -maxRotation);
+    targetRotation.x -= rotationSpeed;
   }
   if (keys['arrowdown'] || keys['s']) {
-    targetRotation.x = Math.min(targetRotation.x + rotationSpeed, maxRotation);
+    targetRotation.x += rotationSpeed;
   }
   if (keys['arrowleft'] || keys['a']) {
-    targetRotation.y = Math.max(targetRotation.y - rotationSpeed, -maxRotation);
+    targetRotation.y -= rotationSpeed;
   }
   if (keys['arrowright'] || keys['d']) {
-    targetRotation.y = Math.min(targetRotation.y + rotationSpeed, maxRotation);
+    targetRotation.y += rotationSpeed;
   }
   
   // Reset camera with Spacebar
@@ -358,9 +359,12 @@ function handleKeyboardInput() {
     targetRotation.y = 0;
   }
   
-  // Apply rotation limits
-  targetRotation.x = Math.max(-maxRotation, Math.min(maxRotation, targetRotation.x));
-  targetRotation.y = Math.max(-maxRotation, Math.min(maxRotation, targetRotation.y));
+  // Keep rotations within reasonable bounds to prevent extreme values
+  // But still allow full 360° movement
+  if (targetRotation.x > Math.PI * 2) targetRotation.x -= Math.PI * 2;
+  if (targetRotation.x < -Math.PI * 2) targetRotation.x += Math.PI * 2;
+  if (targetRotation.y > Math.PI * 2) targetRotation.y -= Math.PI * 2;
+  if (targetRotation.y < -Math.PI * 2) targetRotation.y += Math.PI * 2;
 }
 
 // Animation loop
@@ -385,9 +389,10 @@ function animate() {
   currentRotation.x += (targetRotation.x - currentRotation.x) * 0.05;
   currentRotation.y += (targetRotation.y - currentRotation.y) * 0.05;
   
-  // Apply rotation with drift
+  // Apply FULL 360° rotation with drift - NO LIMITS!
   camera.rotation.x = currentRotation.y + driftY;
   camera.rotation.y = currentRotation.x + driftX;
+  camera.rotation.z = 0; // Keep upright
   
   // Gentle vertical float (breathing motion)
   camera.position.y = Math.sin(time * 0.5) * 0.1 + 2;
