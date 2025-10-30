@@ -230,6 +230,16 @@ function createEmotionButtons() {
   };
   container.appendChild(audioButton);
   
+  // Add keyboard focus helper
+  const focusHelper = document.createElement('div');
+  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px;">🎮 Click here first, then use WASD/Arrows to move camera</p>';
+  focusHelper.style.cursor = 'pointer';
+  focusHelper.onclick = () => {
+    window.focus(); // Ensure window has focus
+    document.body.focus(); // Ensure document has focus
+  };
+  container.appendChild(focusHelper);
+  
   document.body.appendChild(container);
 }
 
@@ -253,29 +263,36 @@ let keys = {};
 // Keyboard event handlers
 document.addEventListener('keydown', (event) => {
   keys[event.key] = true;
+  console.log('Key pressed:', event.key); // Debug log
 });
 
 document.addEventListener('keyup', (event) => {
   keys[event.key] = false;
 });
 
+// Click to focus handler
+document.addEventListener('click', () => {
+  window.focus();
+  console.log('Window focused for keyboard input');
+});
+
 // Keyboard control function
 function handleKeyboardInput() {
-  const rotationSpeed = 0.05;
-  const maxRotation = 0.8; // Maximum rotation limit
+  const rotationSpeed = 0.08; // Increased speed
+  const maxRotation = 1.0; // Increased rotation limit
   
   // Arrow keys and WASD for camera control
   if (keys['ArrowUp'] || keys['w'] || keys['W']) {
-    targetRotation.x -= rotationSpeed;
+    targetRotation.x = Math.max(targetRotation.x - rotationSpeed, -maxRotation);
   }
   if (keys['ArrowDown'] || keys['s'] || keys['S']) {
-    targetRotation.x += rotationSpeed;
+    targetRotation.x = Math.min(targetRotation.x + rotationSpeed, maxRotation);
   }
   if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-    targetRotation.y -= rotationSpeed;
+    targetRotation.y = Math.max(targetRotation.y - rotationSpeed, -maxRotation);
   }
   if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-    targetRotation.y += rotationSpeed;
+    targetRotation.y = Math.min(targetRotation.y + rotationSpeed, maxRotation);
   }
   
   // Reset camera with Spacebar
