@@ -170,7 +170,30 @@ let emotionTimer = null;
 function setEmotion(emotion) {
   if (emotionColors[emotion]) {
     currentEmotion = emotion;
-    planeMaterial.color = emotionColors[emotion];
+    
+    // Smooth color transition
+    const targetColor = emotionColors[emotion];
+    const startColor = planeMaterial.color.clone();
+    const duration = 2000; // 2 seconds
+    const startTime = Date.now();
+    
+    function updateColor() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Smooth easing function
+      const easeProgress = progress < 0.5 
+        ? 2 * progress * progress 
+        : -1 + (4 - 2 * progress) * progress;
+      
+      planeMaterial.color.lerpColors(startColor, targetColor, easeProgress);
+      
+      if (progress < 1) {
+        requestAnimationFrame(updateColor);
+      }
+    }
+    
+    updateColor();
     
     // Play emotion sound
     playEmotionSound(emotion);
@@ -198,6 +221,11 @@ function createEmotionButtons() {
   container.style.top = '10px';
   container.style.left = '10px';
   container.style.zIndex = '100';
+  container.style.background = 'rgba(5, 10, 20, 0.8)';
+  container.style.padding = '15px';
+  container.style.borderRadius = '10px';
+  container.style.border = '1px solid rgba(30, 127, 203, 0.3)';
+  container.style.backdropFilter = 'blur(10px)';
   
   emotions.forEach(emotion => {
     const button = document.createElement('button');
@@ -205,10 +233,11 @@ function createEmotionButtons() {
     button.style.margin = '5px';
     button.style.padding = '8px 12px';
     button.style.backgroundColor = getColorHex(emotion.key);
-    button.style.color = 'white';
+    button.style.color = emotion.key === 'comfort' ? 'black' : 'white';
     button.style.border = 'none';
-    button.style.borderRadius = '4px';
+    button.style.borderRadius = '20px';
     button.style.cursor = 'pointer';
+    button.style.transition = 'all 0.3s ease';
     
     button.onclick = () => setEmotion(emotion.key);
     container.appendChild(button);
@@ -222,7 +251,7 @@ function createEmotionButtons() {
   audioButton.style.backgroundColor = '#333';
   audioButton.style.color = 'white';
   audioButton.style.border = 'none';
-  audioButton.style.borderRadius = '4px';
+  audioButton.style.borderRadius = '20px';
   audioButton.style.cursor = 'pointer';
   audioButton.onclick = () => {
     initAudio();
@@ -232,11 +261,10 @@ function createEmotionButtons() {
   
   // Add keyboard focus helper
   const focusHelper = document.createElement('div');
-  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px;">🎮 Click here first, then use WASD/Arrows to move camera</p>';
+  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then use WASD/Arrows to move camera</p>';
   focusHelper.style.cursor = 'pointer';
   focusHelper.onclick = () => {
-    window.focus(); // Ensure window has focus
-    document.body.focus(); // Ensure document has focus
+    window.focus();
   };
   container.appendChild(focusHelper);
   
@@ -260,38 +288,67 @@ let targetRotation = { x: 0, y: 0 };
 let currentRotation = { x: 0, y: 0 };
 let keys = {};
 
-// Keyboard event handlers
-document.addEventListener('keydown', (event) => {
-  keys[event.key] = true;
-  console.log('Key pressed:', event.key); // Debug log
-});
+// Enhanced keyboard event handlers
+function setupKeyboardControls() {
+  // Global keyboard listeners
+  window.addEventListener('keydown', (event) => {
+    keys[event.key.toLowerCase()] = true;
+    // Prevent default only for our control keys
+    if (['w', 'a', 's', 'd', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(event.key.toLowerCase())) {
+      event.preventDefault();
+    }
+  });
 
-document.addEventListener('keyup', (event) => {
-  keys[event.key] = false;
-});
+  window.addEventListener('keyup', (event) => {
+    keys[event.key.toLowerCase()] = false;
+    // Prevent default only for our control keys
+    if (['w', 'a', 's', 'd', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(event.key.toLowerCase())) {
+      event.preventDefault();
+    }
+  });
 
-// Click to focus handler
-document.addEventListener('click', () => {
-  window.focus();
-  console.log('Window focused for keyboard input');
-});
+  // Click anywhere to focus
+  document.addEventListener('click', (event) => {
+    // Only focus if clicking on the canvas or UI elements
+    if (event.target.tagName !== 'BUTTON' && !event.target.closest('button')) {
+      window.focus();
+      // Create and focus a hidden input for mobile/touch devices
+      let hiddenInput = document.getElementById('siren-hidden-input');
+      if (!hiddenInput) {
+        hiddenInput = document.createElement('input');
+        hiddenInput.id = 'siren-hidden-input';
+        hiddenInput.style.position = 'absolute';
+        hiddenInput.style.opacity = '0';
+        hiddenInput.style.pointerEvents = 'none';
+        hiddenInput.style.top = '-100px';
+        document.body.appendChild(hiddenInput);
+      }
+      hiddenInput.focus();
+    }
+  });
+
+  // Also focus when touching the canvas
+  renderer.domElement.addEventListener('touchstart', () => {
+    window.focus();
+  });
+}
 
 // Keyboard control function
 function handleKeyboardInput() {
-  const rotationSpeed = 0.08; // Increased speed
-  const maxRotation = 1.0; // Increased rotation limit
+  const rotationSpeed = 0.08;
+  const maxRotation = 1.0;
   
-  // Arrow keys and WASD for camera control
-  if (keys['ArrowUp'] || keys['w'] || keys['W']) {
+  // Arrow keys and WASD for camera control (case insensitive)
+  if (keys['arrowup'] || keys['w']) {
     targetRotation.x = Math.max(targetRotation.x - rotationSpeed, -maxRotation);
   }
-  if (keys['ArrowDown'] || keys['s'] || keys['S']) {
+  if (keys['arrowdown'] || keys['s']) {
     targetRotation.x = Math.min(targetRotation.x + rotationSpeed, maxRotation);
   }
-  if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+  if (keys['arrowleft'] || keys['a']) {
     targetRotation.y = Math.max(targetRotation.y - rotationSpeed, -maxRotation);
   }
-  if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+  if (keys['arrowright'] || keys['d']) {
     targetRotation.y = Math.min(targetRotation.y + rotationSpeed, maxRotation);
   }
   
@@ -414,9 +471,10 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Initialize
-createParticles(); // Create the magical particles
+// Initialize everything
+createParticles();
 createEmotionButtons();
+setupKeyboardControls(); // Initialize keyboard controls
 animate();
 
 // Handle window resizing
