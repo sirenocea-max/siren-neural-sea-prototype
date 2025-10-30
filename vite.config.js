@@ -2,12 +2,16 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   server: {
-    port: 5173,
-    host: true // Add this line to bind to all addresses
+    host: '0.0.0.0',
+    port: process.env.PORT || 5173,
   },
   preview: {
-    port: 4173,
-    host: true // Add this line for production preview
+    host: '0.0.0.0',
+    port: process.env.PORT || 4173,
+    allowedHosts: true // This allows all hosts
   },
-  base: './' // For deployment
+  build: {
+    outDir: 'dist',
+    sourcemap: false
+  }
 })
