@@ -107,15 +107,15 @@ for (let i = 0; i < positions.length; i += 3) {
 
 // === PARTICLE SYSTEM ===
 let particles = null;
+let particleGeometry = null;
 let particlePositions = null;
 let particleVelocities = null;
 let particleColors = null;
+const particleCount = 200;
 
 function createParticles() {
-  const particleCount = 200;
-  
   // Create particle geometry
-  const particleGeometry = new THREE.BufferGeometry();
+  particleGeometry = new THREE.BufferGeometry();
   particlePositions = new Float32Array(particleCount * 3);
   particleColors = new Float32Array(particleCount * 3);
   particleVelocities = [];
@@ -151,7 +151,7 @@ function createParticles() {
   
   // Create particle material
   const particleMaterial = new THREE.PointsMaterial({
-    size: 0.5,
+    size: 1.0, // Increased size for easier clicking
     vertexColors: true,
     transparent: true,
     opacity: 0.8,
@@ -162,30 +162,31 @@ function createParticles() {
   scene.add(particles);
 }
 
-// === PARTICLE DRAGGING SYSTEM ===
-let raycaster = new THREE.Raycaster();
+// === SIMPLE PARTICLE DRAGGING SYSTEM ===
+let isDragging = false;
+let draggedParticleIndex = -1;
 let mouse = new THREE.Vector2();
-let draggedParticle = null;
-let originalParticleVelocity = null;
+let raycaster = new THREE.Raycaster();
 
 function setupParticleDragging() {
-  // Mouse event listeners for particle dragging
+  // Set initial cursor
+  renderer.domElement.style.cursor = 'pointer';
+  
+  // Mouse events
   renderer.domElement.addEventListener('mousedown', onMouseDown);
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
   
-  // Touch event listeners for mobile
+  // Touch events for mobile
   renderer.domElement.addEventListener('touchstart', onTouchStart);
   window.addEventListener('touchmove', onTouchMove);
   window.addEventListener('touchend', onTouchEnd);
 }
 
 function onMouseDown(event) {
-  event.preventDefault();
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  
-  tryPickParticle();
+  startDrag();
 }
 
 function onTouchStart(event) {
@@ -193,110 +194,117 @@ function onTouchStart(event) {
   if (event.touches.length > 0) {
     mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-    
-    tryPickParticle();
+    startDrag();
   }
 }
 
 function onMouseMove(event) {
-  if (!draggedParticle) return;
+  if (!isDragging) return;
   
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  
-  updateDraggedParticlePosition();
+  updateDrag();
 }
 
 function onTouchMove(event) {
-  if (!draggedParticle || event.touches.length === 0) return;
+  if (!isDragging || event.touches.length === 0) return;
   
   event.preventDefault();
   mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-  
-  updateDraggedParticlePosition();
+  updateDrag();
 }
 
 function onMouseUp() {
-  releaseParticle();
+  stopDrag();
 }
 
 function onTouchEnd() {
-  releaseParticle();
+  stopDrag();
 }
 
-function tryPickParticle() {
+function startDrag() {
   raycaster.setFromCamera(mouse, camera);
   
-  // Create a temporary sphere geometry for intersection testing
-  const particleSphere = new THREE.SphereGeometry(0.8, 8, 8);
+  // Check intersection with particles using simple distance check
   const particlePositions = particles.geometry.attributes.position.array;
+  const cameraPosition = camera.position;
   
-  for (let i = 0; i < particlePositions.length / 3; i++) {
+  let closestParticle = -1;
+  let closestDistance = 2.0; // Increased hit radius
+  
+  for (let i = 0; i < particleCount; i++) {
     const i3 = i * 3;
-    const particlePosition = new THREE.Vector3(
+    const particlePos = new THREE.Vector3(
       particlePositions[i3],
       particlePositions[i3 + 1],
       particlePositions[i3 + 2]
     );
     
-    particleSphere.translate(particlePosition.x, particlePosition.y, particlePosition.z);
+    // Project particle position to screen space
+    const projectedPos = particlePos.clone().project(camera);
     
-    // Check if ray intersects with particle sphere
-    const intersection = raycaster.ray.intersectSphere(
-      new THREE.Sphere(particlePosition, 0.8)
+    // Calculate screen distance
+    const screenDistance = Math.sqrt(
+      Math.pow(projectedPos.x - mouse.x, 2) + 
+      Math.pow(projectedPos.y - mouse.y, 2)
     );
     
-    if (intersection) {
-      // Found a particle to drag!
-      draggedParticle = i;
-      originalParticleVelocity = { ...particleVelocities[i] };
-      
-      // Stop the particle's movement while dragging
-      particleVelocities[i].x = 0;
-      particleVelocities[i].y = 0;
-      particleVelocities[i].z = 0;
-      
-      // Change cursor to grabbing
-      renderer.domElement.style.cursor = 'grabbing';
-      break;
+    if (screenDistance < closestDistance) {
+      closestDistance = screenDistance;
+      closestParticle = i;
     }
+  }
+  
+  if (closestParticle !== -1) {
+    isDragging = true;
+    draggedParticleIndex = closestParticle;
+    
+    // Stop the particle's movement while dragging
+    particleVelocities[draggedParticleIndex].x = 0;
+    particleVelocities[draggedParticleIndex].y = 0;
+    particleVelocities[draggedParticleIndex].z = 0;
+    
+    renderer.domElement.style.cursor = 'grabbing';
+    console.log('Grabbed particle:', draggedParticleIndex);
   }
 }
 
-function updateDraggedParticlePosition() {
-  if (draggedParticle === null) return;
+function updateDrag() {
+  if (!isDragging || draggedParticleIndex === -1) return;
   
-  // Create a plane at the particle's current height for dragging
-  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -particlePositions[draggedParticle * 3 + 1]);
+  // Create a plane at the average particle height for dragging
+  const particleHeight = particlePositions[draggedParticleIndex * 3 + 1];
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -particleHeight);
   const intersectionPoint = new THREE.Vector3();
   
   raycaster.setFromCamera(mouse, camera);
-  raycaster.ray.intersectPlane(plane, intersectionPoint);
+  const intersects = raycaster.ray.intersectPlane(plane, intersectionPoint);
   
-  if (intersectionPoint) {
+  if (intersects) {
     // Update particle position
-    particlePositions[draggedParticle * 3] = intersectionPoint.x;
-    particlePositions[draggedParticle * 3 + 1] = intersectionPoint.y;
-    particlePositions[draggedParticle * 3 + 2] = intersectionPoint.z;
+    const i3 = draggedParticleIndex * 3;
+    particlePositions[i3] = intersectionPoint.x;
+    particlePositions[i3 + 1] = intersectionPoint.y;
+    particlePositions[i3 + 2] = intersectionPoint.z;
     
     particles.geometry.attributes.position.needsUpdate = true;
   }
 }
 
-function releaseParticle() {
-  if (draggedParticle !== null) {
+function stopDrag() {
+  if (isDragging && draggedParticleIndex !== -1) {
     // Give the particle a small random velocity when released
-    particleVelocities[draggedParticle].x = (Math.random() - 0.5) * 0.02;
-    particleVelocities[draggedParticle].y = (Math.random() - 0.5) * 0.01;
-    particleVelocities[draggedParticle].z = (Math.random() - 0.5) * 0.02;
+    particleVelocities[draggedParticleIndex].x = (Math.random() - 0.5) * 0.02;
+    particleVelocities[draggedParticleIndex].y = (Math.random() - 0.5) * 0.01;
+    particleVelocities[draggedParticleIndex].z = (Math.random() - 0.5) * 0.02;
     
-    draggedParticle = null;
-    originalParticleVelocity = null;
-    
-    // Reset cursor
-    renderer.domElement.style.cursor = 'grab';
+    console.log('Released particle:', draggedParticleIndex);
   }
+  
+  isDragging = false;
+  draggedParticleIndex = -1;
+  renderer.domElement.style.cursor = 'pointer';
 }
 
 // Emotion state
@@ -535,10 +543,10 @@ function animate() {
   camera.position.y = Math.sin(time * 0.5) * 0.1 + 2;
   
   // === PARTICLE ANIMATION ===
-  if (particles && draggedParticle === null) {
+  if (particles && !isDragging) {
     const positions = particles.geometry.attributes.position.array;
     
-    for (let i = 0; i < positions.length / 3; i++) {
+    for (let i = 0; i < particleCount; i++) {
       const i3 = i * 3;
       const velocity = particleVelocities[i];
       
