@@ -105,209 +105,159 @@ for (let i = 0; i < positions.length; i += 3) {
   originalY.push(positions[i + 1]);
 }
 
-// === GALAXY PLANTS SYSTEM ===
-let galaxyPlants = null;
-let plantGeometry = null;
-let plantPositions = null;
-let plantColors = null;
-let plantOffsets = null; // For individual plant movement
-let plantScales = null; // For individual plant sizes
-const plantCount = 100; // Reduced count for better performance with complex shapes
+// === UNIVERSE BALLS SYSTEM ===
+let universeBalls = null;
+let ballPositions = null;
+let ballVelocities = null;
+let ballColors = null;
+let ballSizes = null;
+let ballOrbitData = null;
+const ballCount = 50;
 
-function createGalaxyPlants() {
-  const plants = new THREE.Group();
+function createUniverseBalls() {
+  // Create ball geometry
+  const ballGeometry = new THREE.SphereGeometry(1, 16, 16); // Smooth spheres
+  const ballMaterials = [];
   
-  // Galaxy plant colors - cosmic flora palette
-  const plantColorPalette = [
-    new THREE.Color(0x9A6BFF), // Cosmic Violet
-    new THREE.Color(0x6EE7E0), // Nebula Cyan
-    new THREE.Color(0xFF6B9D), // Star Pink
-    new THREE.Color(0x4DFFDF), // Aqua Glow
-    new THREE.Color(0xFFD166), // Starlight Gold
-    new THREE.Color(0xB967FF), // Deep Purple
+  ballPositions = new Float32Array(ballCount * 3);
+  ballColors = new Float32Array(ballCount * 3);
+  ballSizes = new Float32Array(ballCount);
+  ballVelocities = [];
+  ballOrbitData = [];
+  
+  // Universe ball colors - planetary colors
+  const universeColors = [
+    new THREE.Color(0x9A6BFF), // Purple Nebula
+    new THREE.Color(0x6EE7E0), // Cyan Gas Giant
+    new THREE.Color(0xFF6B9D), // Pink Star
+    new THREE.Color(0x4DFFDF), // Aqua World
+    new THREE.Color(0xFFD166), // Golden Sun
+    new THREE.Color(0xB967FF), // Deep Space Violet
     new THREE.Color(0x6BFFB8), // Alien Green
-    new THREE.Color(0xFF8E6B)  // Cosmic Coral
+    new THREE.Color(0xFF8E6B), // Red Giant
+    new THREE.Color(0x1E7FCB), // Blue Ocean World
+    new THREE.Color(0xF7D774)  // Yellow Dwarf
   ];
   
-  plantOffsets = [];
-  plantScales = [];
-  
-  // Create different types of galaxy plants
-  for (let i = 0; i < plantCount; i++) {
-    const plantType = Math.floor(Math.random() * 3); // 3 different plant types
-    let plant;
+  // Create balls in orbital positions
+  for (let i = 0; i < ballCount; i++) {
+    const i3 = i * 3;
     
-    switch(plantType) {
-      case 0:
-        plant = createSpiralPlant();
+    // Different orbital patterns
+    const orbitType = Math.floor(Math.random() * 3);
+    let x, y, z;
+    
+    switch(orbitType) {
+      case 0: // Close orbit near ocean
+        const radius1 = 5 + Math.random() * 15;
+        const angle1 = Math.random() * Math.PI * 2;
+        x = Math.cos(angle1) * radius1;
+        y = 1 + Math.random() * 4;
+        z = Math.sin(angle1) * radius1;
         break;
-      case 1:
-        plant = createTendrilPlant();
+        
+      case 1: // Medium orbit
+        const radius2 = 10 + Math.random() * 20;
+        const angle2 = Math.random() * Math.PI * 2;
+        const height2 = Math.random() * Math.PI;
+        x = Math.cos(angle2) * radius2 * Math.cos(height2);
+        y = 3 + Math.random() * 6;
+        z = Math.sin(angle2) * radius2 * Math.cos(height2);
         break;
-      case 2:
-        plant = createCrystalPlant();
+        
+      case 2: // Far scattered orbit
+        x = (Math.random() - 0.5) * 40;
+        y = 2 + Math.random() * 8;
+        z = (Math.random() - 0.5) * 40;
         break;
     }
     
-    // Random position on the ocean floor
-    const x = (Math.random() - 0.5) * 40;
-    const z = (Math.random() - 0.5) * 40;
-    const y = 0.1; // Just above the ocean surface
+    ballPositions[i3] = x;
+    ballPositions[i3 + 1] = y;
+    ballPositions[i3 + 2] = z;
     
-    plant.position.set(x, y, z);
+    // Random color from universe palette
+    const color = universeColors[Math.floor(Math.random() * universeColors.length)];
+    ballColors[i3] = color.r;
+    ballColors[i3 + 1] = color.g;
+    ballColors[i3 + 2] = color.b;
     
-    // Random rotation
-    plant.rotation.y = Math.random() * Math.PI * 2;
+    // Random size (planets have different sizes)
+    const size = 0.1 + Math.random() * 0.3;
+    ballSizes[i] = size;
     
-    // Random scale for variety
-    const scale = 0.3 + Math.random() * 0.4;
-    plant.scale.set(scale, scale, scale);
+    // Gentle floating velocity
+    ballVelocities.push({
+      x: (Math.random() - 0.5) * 0.005,
+      y: (Math.random() - 0.5) * 0.003,
+      z: (Math.random() - 0.5) * 0.005
+    });
     
-    // Random color from galaxy palette
-    const color = plantColorPalette[Math.floor(Math.random() * plantColorPalette.length)];
-    plant.material = new THREE.MeshBasicMaterial({ 
-      color: color,
+    // Orbital data for planetary movement
+    ballOrbitData.push({
+      orbitSpeed: 0.1 + Math.random() * 0.3,
+      orbitRadius: 1 + Math.random() * 3,
+      timeOffset: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.5 + Math.random() * 1.5,
+      rotationSpeed: (Math.random() - 0.5) * 0.02
+    });
+  }
+  
+  // Create individual balls for better control
+  universeBalls = new THREE.Group();
+  
+  for (let i = 0; i < ballCount; i++) {
+    const ballMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(ballColors[i * 3], ballColors[i * 3 + 1], ballColors[i * 3 + 2]),
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.9,
       blending: THREE.AdditiveBlending
     });
     
-    plants.add(plant);
+    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+    ball.position.set(ballPositions[i * 3], ballPositions[i * 3 + 1], ballPositions[i * 3 + 2]);
+    ball.scale.setScalar(ballSizes[i]);
     
-    // Store individual plant data for animation
-    plantOffsets.push({
-      timeOffset: Math.random() * Math.PI * 2,
-      swaySpeed: 0.5 + Math.random() * 1.0,
-      pulseSpeed: 1.0 + Math.random() * 2.0,
-      rotationSpeed: (Math.random() - 0.5) * 0.02,
-      heightOffset: Math.random() * 0.5
-    });
-    
-    plantScales.push(scale);
+    universeBalls.add(ball);
   }
   
-  scene.add(plants);
-  galaxyPlants = plants;
+  scene.add(universeBalls);
 }
 
-function createSpiralPlant() {
-  const group = new THREE.Group();
+// === UNIVERSE BALLS ANIMATION ===
+function animateUniverseBalls(time) {
+  if (!universeBalls) return;
   
-  // Create spiral stem
-  const stemGeometry = new THREE.CylinderGeometry(0.02, 0.05, 1.5, 8);
-  const stem = new THREE.Mesh(stemGeometry);
-  stem.rotation.x = Math.PI / 2;
-  group.add(stem);
-  
-  // Create spiral leaves
-  const leafCount = 6;
-  for (let i = 0; i < leafCount; i++) {
-    const leafGeometry = new THREE.SphereGeometry(0.1, 4, 4);
-    const leaf = new THREE.Mesh(leafGeometry);
+  universeBalls.children.forEach((ball, index) => {
+    const orbit = ballOrbitData[index];
+    const originalPos = {
+      x: ballPositions[index * 3],
+      y: ballPositions[index * 3 + 1],
+      z: ballPositions[index * 3 + 2]
+    };
     
-    const angle = (i / leafCount) * Math.PI * 2;
-    const radius = 0.3;
-    const height = (i / leafCount) * 1.2;
+    // Planetary orbital motion
+    const orbitX = Math.cos(time * orbit.orbitSpeed + orbit.timeOffset) * orbit.orbitRadius;
+    const orbitZ = Math.sin(time * orbit.orbitSpeed + orbit.timeOffset) * orbit.orbitRadius;
     
-    leaf.position.set(
-      Math.cos(angle) * radius,
-      height,
-      Math.sin(angle) * radius
-    );
+    // Gentle floating
+    const floatY = Math.sin(time * 0.3 + orbit.timeOffset) * 0.5;
     
-    leaf.scale.set(1, 2, 1);
-    group.add(leaf);
-  }
-  
-  return group;
-}
-
-function createTendrilPlant() {
-  const group = new THREE.Group();
-  
-  // Main stem
-  const stemGeometry = new THREE.CylinderGeometry(0.03, 0.06, 1.2, 6);
-  const stem = new THREE.Mesh(stemGeometry);
-  group.add(stem);
-  
-  // Tendrils
-  const tendrilCount = 4;
-  for (let i = 0; i < tendrilCount; i++) {
-    const tendrilGeometry = new THREE.CylinderGeometry(0.01, 0.02, 0.8, 4);
-    const tendril = new THREE.Mesh(tendrilGeometry);
+    // Update position with orbital motion
+    ball.position.x = originalPos.x + orbitX * 0.1;
+    ball.position.y = originalPos.y + floatY * 0.2;
+    ball.position.z = originalPos.z + orbitZ * 0.1;
     
-    const angle = (i / tendrilCount) * Math.PI * 2;
-    const bend = Math.PI / 4;
+    // Pulsating glow (like stars twinkling)
+    const pulse = Math.sin(time * orbit.pulseSpeed) * 0.2 + 0.8;
+    ball.material.opacity = 0.7 + pulse * 0.3;
     
-    tendril.position.y = 0.6;
-    tendril.rotation.x = bend;
-    tendril.rotation.y = angle;
+    // Slow rotation (planets spinning)
+    ball.rotation.y += orbit.rotationSpeed;
+    ball.rotation.x += orbit.rotationSpeed * 0.5;
     
-    // Add glowing tips
-    const tipGeometry = new THREE.SphereGeometry(0.05, 6, 6);
-    const tip = new THREE.Mesh(tipGeometry);
-    tip.position.y = 0.4;
-    tendril.add(tip);
-    
-    group.add(tendril);
-  }
-  
-  return group;
-}
-
-function createCrystalPlant() {
-  const group = new THREE.Group();
-  
-  // Crystal clusters
-  const clusterCount = 3;
-  for (let i = 0; i < clusterCount; i++) {
-    const crystalCount = 3 + Math.floor(Math.random() * 4);
-    
-    for (let j = 0; j < crystalCount; j++) {
-      const height = 0.3 + Math.random() * 0.7;
-      const crystalGeometry = new THREE.CylinderGeometry(0.02, 0.04, height, 4);
-      const crystal = new THREE.Mesh(crystalGeometry);
-      
-      const angle = (j / crystalCount) * Math.PI * 2;
-      const radius = 0.1 + Math.random() * 0.2;
-      
-      crystal.position.set(
-        Math.cos(angle) * radius,
-        height * 0.5,
-        Math.sin(angle) * radius
-      );
-      
-      crystal.rotation.x = Math.PI / 2;
-      crystal.rotation.z = Math.random() * Math.PI;
-      
-      group.add(crystal);
-    }
-  }
-  
-  return group;
-}
-
-// === GALAXY PLANTS ANIMATION ===
-function animateGalaxyPlants(time) {
-  if (!galaxyPlants) return;
-  
-  galaxyPlants.children.forEach((plant, index) => {
-    const offset = plantOffsets[index];
-    
-    // Gentle swaying motion
-    const sway = Math.sin(time * offset.swaySpeed + offset.timeOffset) * 0.1;
-    plant.rotation.z = sway;
-    
-    // Pulsating glow
-    const pulse = Math.sin(time * offset.pulseSpeed + offset.timeOffset) * 0.2 + 0.8;
-    plant.scale.setScalar(plantScales[index] * pulse);
-    
-    // Slow rotation
-    plant.rotation.y += offset.rotationSpeed;
-    
-    // Gentle floating motion
-    const float = Math.sin(time * 0.5 + offset.timeOffset) * 0.1;
-    plant.position.y = 0.1 + float + offset.heightOffset * 0.3;
+    // Gentle scale pulsing
+    ball.scale.setScalar(ballSizes[index] * (0.9 + pulse * 0.2));
   });
 }
 
@@ -410,7 +360,7 @@ function createEmotionButtons() {
   
   // Add keyboard focus helper
   const focusHelper = document.createElement('div');
-  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then use WASD/Arrows for 360° camera movement<br>🌿 Galaxy plants sway gently in cosmic currents</p>';
+  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then use WASD/Arrows for 360° camera movement<br>🪐 Universe balls orbit in cosmic harmony</p>';
   focusHelper.style.cursor = 'pointer';
   focusHelper.onclick = () => {
     window.focus();
@@ -546,8 +496,8 @@ function animate() {
   // Gentle vertical float (breathing motion)
   camera.position.y = Math.sin(time * 0.5) * 0.1 + 2;
   
-  // === GALAXY PLANTS ANIMATION ===
-  animateGalaxyPlants(time);
+  // === UNIVERSE BALLS ANIMATION ===
+  animateUniverseBalls(time);
   
   // === OCEAN WAVES ===
   const oceanPositions = planeGeometry.attributes.position.array;
@@ -604,7 +554,7 @@ function animate() {
 }
 
 // Initialize everything
-createGalaxyPlants(); // Create beautiful galaxy plants instead of particles
+createUniverseBalls(); // Create beautiful universe balls/planets
 createEmotionButtons();
 setupKeyboardControls(); // Initialize keyboard controls
 animate();
