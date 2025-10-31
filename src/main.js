@@ -105,206 +105,210 @@ for (let i = 0; i < positions.length; i += 3) {
   originalY.push(positions[i + 1]);
 }
 
-// === PARTICLE SYSTEM ===
-let particles = null;
-let particleGeometry = null;
-let particlePositions = null;
-let particleVelocities = null;
-let particleColors = null;
-const particleCount = 200;
+// === GALAXY PLANTS SYSTEM ===
+let galaxyPlants = null;
+let plantGeometry = null;
+let plantPositions = null;
+let plantColors = null;
+let plantOffsets = null; // For individual plant movement
+let plantScales = null; // For individual plant sizes
+const plantCount = 100; // Reduced count for better performance with complex shapes
 
-function createParticles() {
-  // Create particle geometry
-  particleGeometry = new THREE.BufferGeometry();
-  particlePositions = new Float32Array(particleCount * 3);
-  particleColors = new Float32Array(particleCount * 3);
-  particleVelocities = [];
+function createGalaxyPlants() {
+  const plants = new THREE.Group();
   
-  // Create particles in random positions above the ocean
-  for (let i = 0; i < particleCount; i++) {
-    const i3 = i * 3;
+  // Galaxy plant colors - cosmic flora palette
+  const plantColorPalette = [
+    new THREE.Color(0x9A6BFF), // Cosmic Violet
+    new THREE.Color(0x6EE7E0), // Nebula Cyan
+    new THREE.Color(0xFF6B9D), // Star Pink
+    new THREE.Color(0x4DFFDF), // Aqua Glow
+    new THREE.Color(0xFFD166), // Starlight Gold
+    new THREE.Color(0xB967FF), // Deep Purple
+    new THREE.Color(0x6BFFB8), // Alien Green
+    new THREE.Color(0xFF8E6B)  // Cosmic Coral
+  ];
+  
+  plantOffsets = [];
+  plantScales = [];
+  
+  // Create different types of galaxy plants
+  for (let i = 0; i < plantCount; i++) {
+    const plantType = Math.floor(Math.random() * 3); // 3 different plant types
+    let plant;
     
-    // Random position above ocean
-    particlePositions[i3] = (Math.random() - 0.5) * 40;     // x
-    particlePositions[i3 + 1] = Math.random() * 5 + 1;      // y (height)
-    particlePositions[i3 + 2] = (Math.random() - 0.5) * 40; // z
+    switch(plantType) {
+      case 0:
+        plant = createSpiralPlant();
+        break;
+      case 1:
+        plant = createTendrilPlant();
+        break;
+      case 2:
+        plant = createCrystalPlant();
+        break;
+    }
     
-    // Random color from emotional palette
-    const colorKeys = Object.keys(emotionColors);
-    const randomColorKey = colorKeys[Math.floor(Math.random() * colorKeys.length)];
-    const color = emotionColors[randomColorKey];
+    // Random position on the ocean floor
+    const x = (Math.random() - 0.5) * 40;
+    const z = (Math.random() - 0.5) * 40;
+    const y = 0.1; // Just above the ocean surface
     
-    particleColors[i3] = color.r;
-    particleColors[i3 + 1] = color.g;
-    particleColors[i3 + 2] = color.b;
+    plant.position.set(x, y, z);
     
-    // Random velocity
-    particleVelocities.push({
-      x: (Math.random() - 0.5) * 0.02,
-      y: (Math.random() - 0.5) * 0.01,
-      z: (Math.random() - 0.5) * 0.02
+    // Random rotation
+    plant.rotation.y = Math.random() * Math.PI * 2;
+    
+    // Random scale for variety
+    const scale = 0.3 + Math.random() * 0.4;
+    plant.scale.set(scale, scale, scale);
+    
+    // Random color from galaxy palette
+    const color = plantColorPalette[Math.floor(Math.random() * plantColorPalette.length)];
+    plant.material = new THREE.MeshBasicMaterial({ 
+      color: color,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
     });
+    
+    plants.add(plant);
+    
+    // Store individual plant data for animation
+    plantOffsets.push({
+      timeOffset: Math.random() * Math.PI * 2,
+      swaySpeed: 0.5 + Math.random() * 1.0,
+      pulseSpeed: 1.0 + Math.random() * 2.0,
+      rotationSpeed: (Math.random() - 0.5) * 0.02,
+      heightOffset: Math.random() * 0.5
+    });
+    
+    plantScales.push(scale);
   }
   
-  particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-  particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-  
-  // Create particle material
-  const particleMaterial = new THREE.PointsMaterial({
-    size: 1.0, // Increased size for easier clicking
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending
-  });
-  
-  particles = new THREE.Points(particleGeometry, particleMaterial);
-  scene.add(particles);
+  scene.add(plants);
+  galaxyPlants = plants;
 }
 
-// === SIMPLE PARTICLE DRAGGING SYSTEM ===
-let isDragging = false;
-let draggedParticleIndex = -1;
-let mouse = new THREE.Vector2();
-let raycaster = new THREE.Raycaster();
-
-function setupParticleDragging() {
-  // Set initial cursor
-  renderer.domElement.style.cursor = 'pointer';
+function createSpiralPlant() {
+  const group = new THREE.Group();
   
-  // Mouse events
-  renderer.domElement.addEventListener('mousedown', onMouseDown);
-  window.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('mouseup', onMouseUp);
+  // Create spiral stem
+  const stemGeometry = new THREE.CylinderGeometry(0.02, 0.05, 1.5, 8);
+  const stem = new THREE.Mesh(stemGeometry);
+  stem.rotation.x = Math.PI / 2;
+  group.add(stem);
   
-  // Touch events for mobile
-  renderer.domElement.addEventListener('touchstart', onTouchStart);
-  window.addEventListener('touchmove', onTouchMove);
-  window.addEventListener('touchend', onTouchEnd);
-}
-
-function onMouseDown(event) {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  startDrag();
-}
-
-function onTouchStart(event) {
-  event.preventDefault();
-  if (event.touches.length > 0) {
-    mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-    startDrag();
+  // Create spiral leaves
+  const leafCount = 6;
+  for (let i = 0; i < leafCount; i++) {
+    const leafGeometry = new THREE.SphereGeometry(0.1, 4, 4);
+    const leaf = new THREE.Mesh(leafGeometry);
+    
+    const angle = (i / leafCount) * Math.PI * 2;
+    const radius = 0.3;
+    const height = (i / leafCount) * 1.2;
+    
+    leaf.position.set(
+      Math.cos(angle) * radius,
+      height,
+      Math.sin(angle) * radius
+    );
+    
+    leaf.scale.set(1, 2, 1);
+    group.add(leaf);
   }
+  
+  return group;
 }
 
-function onMouseMove(event) {
-  if (!isDragging) return;
+function createTendrilPlant() {
+  const group = new THREE.Group();
   
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-  updateDrag();
-}
-
-function onTouchMove(event) {
-  if (!isDragging || event.touches.length === 0) return;
+  // Main stem
+  const stemGeometry = new THREE.CylinderGeometry(0.03, 0.06, 1.2, 6);
+  const stem = new THREE.Mesh(stemGeometry);
+  group.add(stem);
   
-  event.preventDefault();
-  mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-  updateDrag();
-}
-
-function onMouseUp() {
-  stopDrag();
-}
-
-function onTouchEnd() {
-  stopDrag();
-}
-
-function startDrag() {
-  raycaster.setFromCamera(mouse, camera);
-  
-  // Check intersection with particles using simple distance check
-  const particlePositions = particles.geometry.attributes.position.array;
-  const cameraPosition = camera.position;
-  
-  let closestParticle = -1;
-  let closestDistance = 2.0; // Increased hit radius
-  
-  for (let i = 0; i < particleCount; i++) {
-    const i3 = i * 3;
-    const particlePos = new THREE.Vector3(
-      particlePositions[i3],
-      particlePositions[i3 + 1],
-      particlePositions[i3 + 2]
-    );
+  // Tendrils
+  const tendrilCount = 4;
+  for (let i = 0; i < tendrilCount; i++) {
+    const tendrilGeometry = new THREE.CylinderGeometry(0.01, 0.02, 0.8, 4);
+    const tendril = new THREE.Mesh(tendrilGeometry);
     
-    // Project particle position to screen space
-    const projectedPos = particlePos.clone().project(camera);
+    const angle = (i / tendrilCount) * Math.PI * 2;
+    const bend = Math.PI / 4;
     
-    // Calculate screen distance
-    const screenDistance = Math.sqrt(
-      Math.pow(projectedPos.x - mouse.x, 2) + 
-      Math.pow(projectedPos.y - mouse.y, 2)
-    );
+    tendril.position.y = 0.6;
+    tendril.rotation.x = bend;
+    tendril.rotation.y = angle;
     
-    if (screenDistance < closestDistance) {
-      closestDistance = screenDistance;
-      closestParticle = i;
+    // Add glowing tips
+    const tipGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+    const tip = new THREE.Mesh(tipGeometry);
+    tip.position.y = 0.4;
+    tendril.add(tip);
+    
+    group.add(tendril);
+  }
+  
+  return group;
+}
+
+function createCrystalPlant() {
+  const group = new THREE.Group();
+  
+  // Crystal clusters
+  const clusterCount = 3;
+  for (let i = 0; i < clusterCount; i++) {
+    const crystalCount = 3 + Math.floor(Math.random() * 4);
+    
+    for (let j = 0; j < crystalCount; j++) {
+      const height = 0.3 + Math.random() * 0.7;
+      const crystalGeometry = new THREE.CylinderGeometry(0.02, 0.04, height, 4);
+      const crystal = new THREE.Mesh(crystalGeometry);
+      
+      const angle = (j / crystalCount) * Math.PI * 2;
+      const radius = 0.1 + Math.random() * 0.2;
+      
+      crystal.position.set(
+        Math.cos(angle) * radius,
+        height * 0.5,
+        Math.sin(angle) * radius
+      );
+      
+      crystal.rotation.x = Math.PI / 2;
+      crystal.rotation.z = Math.random() * Math.PI;
+      
+      group.add(crystal);
     }
   }
   
-  if (closestParticle !== -1) {
-    isDragging = true;
-    draggedParticleIndex = closestParticle;
-    
-    // Stop the particle's movement while dragging
-    particleVelocities[draggedParticleIndex].x = 0;
-    particleVelocities[draggedParticleIndex].y = 0;
-    particleVelocities[draggedParticleIndex].z = 0;
-    
-    renderer.domElement.style.cursor = 'grabbing';
-    console.log('Grabbed particle:', draggedParticleIndex);
-  }
+  return group;
 }
 
-function updateDrag() {
-  if (!isDragging || draggedParticleIndex === -1) return;
+// === GALAXY PLANTS ANIMATION ===
+function animateGalaxyPlants(time) {
+  if (!galaxyPlants) return;
   
-  // Create a plane at the average particle height for dragging
-  const particleHeight = particlePositions[draggedParticleIndex * 3 + 1];
-  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -particleHeight);
-  const intersectionPoint = new THREE.Vector3();
-  
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.ray.intersectPlane(plane, intersectionPoint);
-  
-  if (intersects) {
-    // Update particle position
-    const i3 = draggedParticleIndex * 3;
-    particlePositions[i3] = intersectionPoint.x;
-    particlePositions[i3 + 1] = intersectionPoint.y;
-    particlePositions[i3 + 2] = intersectionPoint.z;
+  galaxyPlants.children.forEach((plant, index) => {
+    const offset = plantOffsets[index];
     
-    particles.geometry.attributes.position.needsUpdate = true;
-  }
-}
-
-function stopDrag() {
-  if (isDragging && draggedParticleIndex !== -1) {
-    // Give the particle a small random velocity when released
-    particleVelocities[draggedParticleIndex].x = (Math.random() - 0.5) * 0.02;
-    particleVelocities[draggedParticleIndex].y = (Math.random() - 0.5) * 0.01;
-    particleVelocities[draggedParticleIndex].z = (Math.random() - 0.5) * 0.02;
+    // Gentle swaying motion
+    const sway = Math.sin(time * offset.swaySpeed + offset.timeOffset) * 0.1;
+    plant.rotation.z = sway;
     
-    console.log('Released particle:', draggedParticleIndex);
-  }
-  
-  isDragging = false;
-  draggedParticleIndex = -1;
-  renderer.domElement.style.cursor = 'pointer';
+    // Pulsating glow
+    const pulse = Math.sin(time * offset.pulseSpeed + offset.timeOffset) * 0.2 + 0.8;
+    plant.scale.setScalar(plantScales[index] * pulse);
+    
+    // Slow rotation
+    plant.rotation.y += offset.rotationSpeed;
+    
+    // Gentle floating motion
+    const float = Math.sin(time * 0.5 + offset.timeOffset) * 0.1;
+    plant.position.y = 0.1 + float + offset.heightOffset * 0.3;
+  });
 }
 
 // Emotion state
@@ -406,7 +410,7 @@ function createEmotionButtons() {
   
   // Add keyboard focus helper
   const focusHelper = document.createElement('div');
-  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then:<br>• WASD/Arrows: 360° camera<br>• Click & drag: Move particles</p>';
+  focusHelper.innerHTML = '<p style="color: white; margin: 5px; font-size: 12px; opacity: 0.8;">🎮 Click anywhere, then use WASD/Arrows for 360° camera movement<br>🌿 Galaxy plants sway gently in cosmic currents</p>';
   focusHelper.style.cursor = 'pointer';
   focusHelper.onclick = () => {
     window.focus();
@@ -542,30 +546,8 @@ function animate() {
   // Gentle vertical float (breathing motion)
   camera.position.y = Math.sin(time * 0.5) * 0.1 + 2;
   
-  // === PARTICLE ANIMATION ===
-  if (particles && !isDragging) {
-    const positions = particles.geometry.attributes.position.array;
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      const velocity = particleVelocities[i];
-      
-      // Update position (only if not being dragged)
-      positions[i3] += velocity.x;
-      positions[i3 + 1] += velocity.y;
-      positions[i3 + 2] += velocity.z;
-      
-      // Bounce off boundaries
-      if (positions[i3] < -20 || positions[i3] > 20) velocity.x *= -1;
-      if (positions[i3 + 1] < 0.5 || positions[i3 + 1] > 8) velocity.y *= -1;
-      if (positions[i3 + 2] < -20 || positions[i3 + 2] > 20) velocity.z *= -1;
-      
-      // Gentle floating motion
-      positions[i3 + 1] += Math.sin(time + i) * 0.002;
-    }
-    
-    particles.geometry.attributes.position.needsUpdate = true;
-  }
+  // === GALAXY PLANTS ANIMATION ===
+  animateGalaxyPlants(time);
   
   // === OCEAN WAVES ===
   const oceanPositions = planeGeometry.attributes.position.array;
@@ -622,10 +604,9 @@ function animate() {
 }
 
 // Initialize everything
-createParticles();
+createGalaxyPlants(); // Create beautiful galaxy plants instead of particles
 createEmotionButtons();
 setupKeyboardControls(); // Initialize keyboard controls
-setupParticleDragging(); // Initialize particle dragging system
 animate();
 
 // Handle window resizing
