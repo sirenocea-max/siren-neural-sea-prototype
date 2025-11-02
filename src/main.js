@@ -1,54 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
 
-// ========== 🎨 YOUR DESIGN CUSTOMIZATION AREA ==========
-// ⬇️ ⬇️ ⬇️ CHANGE THESE VALUES TO MATCH YOUR 3D DESIGN ⬇️ ⬇️ ⬇️
-
-// COLORS - Replace with colors from YOUR design
-const YOUR_COLORS = {
-  primary: 0x00BFFF,     // Main ocean color
-  secondary: 0x9A6BFF,   // Secondary elements  
-  accent1: 0xFFD166,     // First accent color
-  accent2: 0x4DFFDF,     // Second accent color
-  background: 0x050A14   // Background color
-};
-
-// PARTICLE SETTINGS - Adjust to match your sphere arrangements
-const YOUR_PARTICLE_SETUP = {
-  count: 80,             // Number of spheres
-  sizeRange: [0.1, 0.4], // Min/Max sphere sizes [smallest, largest]
-  heightRange: [1, 8],   // Vertical placement [lowest, highest]
-  spread: 25,            // How far spheres spread horizontally
-  colors: [              // Color palette for spheres
-    0x00BFFF,  // Turquoise
-    0x9A6BFF,  // Purple  
-    0xFFD166,  // Gold
-    0x4DFFDF,  // Aqua
-    0xFF6B9D   // Pink
-  ]
-};
-
-// OCEAN SETTINGS - Match your ocean/wave design
-const YOUR_OCEAN = {
-  width: 35,             // Ocean plane size
-  waveIntensity: 0.4,    // How dramatic the waves are (0.1 = calm, 1.0 = stormy)
-  waveSpeed: 1.2,        // Wave animation speed
-  metalness: 0.9,        // How reflective (0.0 = matte, 1.0 = mirror)
-  transparency: 0.8      // How see-through (0.0 = solid, 1.0 = invisible)
-};
-
-// LIGHTING - Match the mood of your design
-const YOUR_LIGHTING = {
-  ambientColor: 0x404040,
-  ambientIntensity: 0.4,
-  mainLightColor: 0x6EE7E0,
-  mainLightIntensity: 1.0
-};
-
-// ⬆️ ⬆️ ⬆️ CHANGE THE ABOVE VALUES TO MATCH YOUR DESIGN ⬆️ ⬆️ ⬆️
-// ========== END CUSTOMIZATION AREA ==========
-
-// Scene setup (don't change this)
+// Scene, Camera, Renderer Setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -57,48 +10,97 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('app').appendChild(renderer.domElement);
 
-// Set YOUR background color
-scene.background = new THREE.Color(YOUR_COLORS.background);
+// Texture Loader for YOUR Images
+const textureLoader = new THREE.TextureLoader();
 
-// Camera position
-camera.position.set(0, 4, 12);
+// ========== 🎨 YOUR 3 DESIGN IMAGES ==========
+// Using YOUR actual image files
+let yourOceanTexture, yourParticlesTexture, yourBackgroundTexture;
 
-// Apply YOUR lighting
-const ambientLight = new THREE.AmbientLight(YOUR_LIGHTING.ambientColor, YOUR_LIGHTING.ambientIntensity);
+// Load your images
+textureLoader.load('./design/Whisk_0ca49e8aa43c869a93042f3c4bb837aadr.jpeg', (texture) => {
+  yourOceanTexture = texture;
+  yourOceanTexture.wrapS = THREE.RepeatWrapping;
+  yourOceanTexture.wrapT = THREE.RepeatWrapping;
+  yourOceanTexture.repeat.set(2, 2);
+});
+
+textureLoader.load('./design/Whisk_9cf0303d8ececc485ea4ea7436ad9d4fdr.jpeg', (texture) => {
+  yourParticlesTexture = texture;
+});
+
+textureLoader.load('./design/Whisk_b4c97d76ca012368ec740649b13beb9bdr.jpeg', (texture) => {
+  yourBackgroundTexture = texture;
+  scene.background = yourBackgroundTexture;
+});
+
+// Camera starting position
+camera.position.set(0, 3, 10);
+
+// Lighting System
+const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(YOUR_LIGHTING.mainLightColor, YOUR_LIGHTING.mainLightIntensity);
-directionalLight.position.set(3, 8, 4);
+const directionalLight = new THREE.DirectionalLight(0x8A2BE2, 1.0);
+directionalLight.position.set(5, 10, 5);
 scene.add(directionalLight);
 
-// Create ocean with YOUR settings
-const planeGeometry = new THREE.PlaneGeometry(YOUR_OCEAN.width, YOUR_OCEAN.width, 80, 80);
+// Emotional Color System
+const emotionColors = {
+  calm: new THREE.Color(0x1E7FCB),
+  wonder: new THREE.Color(0x9A6BFF),
+  comfort: new THREE.Color(0xF7D774),
+  anxiety: new THREE.Color(0xFF4F5E),
+  connection: new THREE.Color(0x6EE7E0)
+};
+
+// Create Ocean Plane with YOUR Texture
+const planeGeometry = new THREE.PlaneGeometry(40, 40, 100, 100);
 const planeMaterial = new THREE.MeshStandardMaterial({ 
-  color: YOUR_COLORS.primary,
-  metalness: YOUR_OCEAN.metalness,
-  roughness: 0.1,
+  color: emotionColors.calm,
+  metalness: 0.8,
+  roughness: 0.2,
   transparent: true,
-  opacity: YOUR_OCEAN.transparency
+  opacity: 0.9
 });
+
+// Apply your ocean texture when loaded
+setTimeout(() => {
+  if (yourOceanTexture) {
+    planeMaterial.map = yourOceanTexture;
+    planeMaterial.needsUpdate = true;
+  }
+}, 1000);
 
 const oceanPlane = new THREE.Mesh(planeGeometry, planeMaterial);
 oceanPlane.rotation.x = -Math.PI / 2;
 scene.add(oceanPlane);
 
-// Store original positions for waves
+// Store original vertex positions for wave animation
 const positions = planeGeometry.attributes.position.array;
 const originalY = [];
 for (let i = 0; i < positions.length; i += 3) {
   originalY.push(positions[i + 1]);
 }
 
-// Create particles with YOUR arrangement
-let universeBalls = new THREE.Group();
+// Particle System with YOUR Design Colors
+let universeBalls = null;
+const ballCount = 60;
 
 function createUniverseBalls() {
-  for (let i = 0; i < YOUR_PARTICLE_SETUP.count; i++) {
+  universeBalls = new THREE.Group();
+  
+  const cosmicColors = [
+    new THREE.Color(0x9A6BFF), // Purple
+    new THREE.Color(0x6EE7E0), // Cyan
+    new THREE.Color(0xFF6B9D), // Pink
+    new THREE.Color(0x4DFFDF), // Aqua
+    new THREE.Color(0xFFD166), // Gold
+  ];
+  
+  for (let i = 0; i < ballCount; i++) {
     const ballGeometry = new THREE.SphereGeometry(1, 16, 16);
-    const color = YOUR_PARTICLE_SETUP.colors[Math.floor(Math.random() * YOUR_PARTICLE_SETUP.colors.length)];
+    const color = cosmicColors[Math.floor(Math.random() * cosmicColors.length)];
     
     const ballMaterial = new THREE.MeshBasicMaterial({
       color: color,
@@ -107,19 +109,22 @@ function createUniverseBalls() {
       blending: THREE.AdditiveBlending
     });
     
+    // Apply your particle texture when loaded
+    if (yourParticlesTexture) {
+      ballMaterial.map = yourParticlesTexture;
+      ballMaterial.needsUpdate = true;
+    }
+    
     const ball = new THREE.Mesh(ballGeometry, ballMaterial);
     
-    // Position based on YOUR settings
-    const x = (Math.random() - 0.5) * YOUR_PARTICLE_SETUP.spread;
-    const y = YOUR_PARTICLE_SETUP.heightRange[0] + Math.random() * (YOUR_PARTICLE_SETUP.heightRange[1] - YOUR_PARTICLE_SETUP.heightRange[0]);
-    const z = (Math.random() - 0.5) * YOUR_PARTICLE_SETUP.spread;
+    // Position based on your design arrangement
+    const x = (Math.random() - 0.5) * 25;
+    const y = 1 + Math.random() * 6;
+    const z = (Math.random() - 0.5) * 25;
     
     ball.position.set(x, y, z);
     
-    // Size based on YOUR range
-    const minSize = YOUR_PARTICLE_SETUP.sizeRange[0];
-    const maxSize = YOUR_PARTICLE_SETUP.sizeRange[1];
-    const size = minSize + Math.random() * (maxSize - minSize);
+    const size = 0.1 + Math.random() * 0.3;
     ball.scale.setScalar(size);
     
     // Store animation data
@@ -137,12 +142,14 @@ function createUniverseBalls() {
   scene.add(universeBalls);
 }
 
-// Animation
+// Animation System
 function animateUniverseBalls(time) {
+  if (!universeBalls) return;
+  
   universeBalls.children.forEach((ball) => {
     const data = ball.userData;
     
-    // Floating motion
+    // Gentle floating motion
     const floatY = Math.sin(time * 0.7 + data.timeOffset) * 0.3;
     ball.position.y = data.originalPos.y + floatY;
     
@@ -156,25 +163,46 @@ function animateUniverseBalls(time) {
   });
 }
 
-// Simple emotion system
-const emotionColors = {
-  calm: new THREE.Color(YOUR_COLORS.primary),
-  wonder: new THREE.Color(YOUR_COLORS.secondary),
-  comfort: new THREE.Color(YOUR_COLORS.accent1),
-  anxiety: new THREE.Color(0xFF4F5E),
-  connection: new THREE.Color(YOUR_COLORS.accent2)
-};
-
+// Emotion System
 let currentEmotion = 'calm';
+let emotionTimer = null;
 
 function setEmotion(emotion) {
   if (emotionColors[emotion]) {
     currentEmotion = emotion;
-    planeMaterial.color = emotionColors[emotion];
+    
+    // Smooth color transition
+    const targetColor = emotionColors[emotion];
+    const startColor = planeMaterial.color.clone();
+    const duration = 2000;
+    const startTime = Date.now();
+    
+    function updateColor() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      const easeProgress = progress < 0.5 
+        ? 2 * progress * progress 
+        : -1 + (4 - 2 * progress) * progress;
+      
+      planeMaterial.color.lerpColors(startColor, targetColor, easeProgress);
+      
+      if (progress < 1) {
+        requestAnimationFrame(updateColor);
+      }
+    }
+    
+    updateColor();
+    
+    // Auto-return to calm
+    if (emotionTimer) clearTimeout(emotionTimer);
+    emotionTimer = setTimeout(() => {
+      setEmotion('calm');
+    }, 15000);
   }
 }
 
-// UI
+// UI Controls
 function createEmotionButtons() {
   const emotions = [
     { name: 'Calm', key: 'calm' },
@@ -200,7 +228,7 @@ function createEmotionButtons() {
     button.textContent = emotion.name;
     button.style.margin = '5px';
     button.style.padding = '8px 12px';
-    button.style.backgroundColor = `#${emotionColors[emotion.key].getHexString()}`;
+    button.style.backgroundColor = getColorHex(emotion.key);
     button.style.color = emotion.key === 'comfort' ? 'black' : 'white';
     button.style.border = 'none';
     button.style.borderRadius = '20px';
@@ -213,7 +241,18 @@ function createEmotionButtons() {
   document.body.appendChild(container);
 }
 
-// Camera controls (keep this)
+function getColorHex(emotion) {
+  const hexMap = {
+    calm: '#1E7FCB',
+    wonder: '#9A6BFF',
+    comfort: '#F7D774', 
+    anxiety: '#FF4F5E',
+    connection: '#6EE7E0'
+  };
+  return hexMap[emotion] || '#1E7FCB';
+}
+
+// Camera Controls
 let targetRotation = { x: 0, y: 0 };
 let currentRotation = { x: 0, y: 0 };
 let keys = {};
@@ -242,7 +281,7 @@ function handleKeyboardInput() {
   if (keys[' ']) { targetRotation.x = 0; targetRotation.y = 0; }
 }
 
-// Animation loop
+// Main Animation Loop
 let clock = new THREE.Clock();
 
 function animate() {
@@ -258,17 +297,27 @@ function animate() {
   camera.rotation.x = currentRotation.y;
   camera.rotation.y = currentRotation.x;
   
-  camera.position.y = Math.sin(time * 0.4) * 0.2 + 4;
+  camera.position.y = Math.sin(time * 0.4) * 0.2 + 3;
   
   animateUniverseBalls(time);
   
-  // Ocean waves with YOUR intensity
+  // Ocean Waves
   const oceanPositions = planeGeometry.attributes.position.array;
+  let waveIntensity = 0.3;
+  let waveSpeed = 1.0;
+  
+  switch(currentEmotion) {
+    case 'wonder': waveIntensity = 0.5; waveSpeed = 0.8; break;
+    case 'comfort': waveIntensity = 0.2; waveSpeed = 0.6; break;
+    case 'anxiety': waveIntensity = 0.8; waveSpeed = 2.0; break;
+    case 'connection': waveIntensity = 0.4; waveSpeed = 1.2; break;
+  }
+  
   for (let i = 0; i < oceanPositions.length; i += 3) {
     const x = oceanPositions[i];
     const z = oceanPositions[i + 2];
     
-    const wave = Math.sin(x * 0.2 + z * 0.1 + time * YOUR_OCEAN.waveSpeed) * YOUR_OCEAN.waveIntensity;
+    const wave = Math.sin(x * 0.2 + z * 0.1 + time * waveSpeed) * waveIntensity;
     oceanPositions[i + 1] = originalY[i / 3] + wave;
   }
   
@@ -277,7 +326,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Initialize
+// Initialize Everything
 createUniverseBalls();
 createEmotionButtons();
 setupKeyboardControls();
@@ -288,3 +337,8 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// Auto emotion after 3 seconds
+setTimeout(() => {
+  setEmotion('wonder');
+}, 3000);
