@@ -2,81 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/siren-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SIREN | Neural Sea - Your Design</title>
+    <title>SIREN | Your Design</title>
     <style>
-      body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background: linear-gradient(45deg, #050A14, #0A1428);
-        font-family: Arial, sans-serif;
-      }
-      #app {
-        width: 100vw;
-        height: 100vh;
-        display: block;
-      }
-      
-      /* Design Gallery */
-      #design-info {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        z-index: 100;
-        background: rgba(5, 10, 20, 0.9);
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid rgba(30, 127, 203, 0.5);
-        backdrop-filter: blur(10px);
-        color: white;
-        max-width: 300px;
-      }
-      
-      #design-info h3 {
-        margin: 0 0 10px 0;
-        color: #6EE7E0;
-      }
-      
-      .design-preview {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-top: 10px;
-      }
-      
-      .design-preview img {
-        width: 100%;
-        border-radius: 5px;
-        border: 2px solid transparent;
-        transition: all 0.3s ease;
-      }
-      
-      .design-preview img:hover {
-        border-color: #9A6BFF;
-        transform: scale(1.05);
-      }
+      body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+      #app { width: 100vw; height: 100vh; display: block; }
     </style>
   </head>
   <body>
     <div id="app"></div>
-    
-    <!-- Design Information Panel -->
-    <div id="design-info">
-      <h3>🎨 Your Design Active</h3>
-      <p>Using your 3 custom images:</p>
-      <div class="design-preview">
-        <img src="./Whisk_0ca49e8aa43c869a93042f3c4bb837aadr.jpeg" alt="Ocean Design" title="Ocean Texture">
-        <img src="./Whisk_9cf0303d8ececc485ea4ea7436ad9d4fdr.jpeg" alt="Particles Design" title="Particle Texture">
-        <img src="./Whisk_b4c97d76ca012368ec740649b13beb9bdr.jpeg" alt="Background Design" title="Background">
-      </div>
-      <p style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
-        🎮 Use WASD/Arrows to explore<br>
-        🎨 Click emotion buttons to change colors
-      </p>
-    </div>
-
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
