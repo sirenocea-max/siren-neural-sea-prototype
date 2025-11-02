@@ -2,15 +2,46 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/siren-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SIREN | Your Design</title>
+    <title>SIREN | Neural Sea</title>
     <style>
-      body { margin: 0; padding: 0; overflow: hidden; background: #000; }
-      #app { width: 100vw; height: 100vh; display: block; }
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #050A14;
+      }
+      #app {
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+      
+      /* Simple design showcase */
+      #design-showcase {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 100;
+        background: rgba(5, 10, 20, 0.9);
+        padding: 10px;
+        border-radius: 10px;
+        color: white;
+        max-width: 200px;
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    
+    <div id="design-showcase">
+      <strong>My 3D Design</strong>
+      <p style="margin: 5px 0; font-size: 12px; opacity: 0.8;">
+        This experience is based on my original 3D design concepts
+      </p>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
